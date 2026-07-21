@@ -15,7 +15,7 @@ Gemini's job is to classify the incoming message (intent) and pull structured da
 
 - **Automation:** n8n (self-hosted, Docker)
 - **Database:** PostgreSQL (transactions matter for stock consistency)
-- **LLM:** Google Gemini 2.0 Flash (intent classification + data extraction + receipt OCR)
+- **LLM:** Google Gemini 3 Flash (intent classification + data extraction + receipt OCR)
 - **Interface:** Telegram Bot API
 - **Networking:** Cloudflare Tunnel (HTTPS access over my own domain)
 
@@ -61,7 +61,7 @@ Gemini'nin görevi gelen mesajı sınıflandırmak (intent) ve içinden yapısal
 
 - **Otomasyon:** n8n (self-hosted, Docker)
 - **Veritabanı:** PostgreSQL (stok tutarlılığı için transaction desteği)
-- **LLM:** Google Gemini 2.0 Flash (intent sınıflandırma + veri çıkarımı + fiş OCR)
+- **LLM:** Google Gemini 3 Flash (intent sınıflandırma + veri çıkarımı + fiş OCR)
 - **Arayüz:** Telegram Bot API
 - **Ağ:** Cloudflare Tunnel (kendi domainim üzerinden HTTPS erişimi)
 
