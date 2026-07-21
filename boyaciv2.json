@@ -1,0 +1,1373 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        0
+      ],
+      "id": "7899dfdf-abaa-4cae-bb6c-0c450e5be8b0",
+      "name": "Telegram Trigger",
+      "webhookId": "cc739360-db61-4dc0-ab05-2a7e9f9004f4",
+      "credentials": {
+        "telegramApi": {
+          "id": "8re9eOadaglPzjQJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Sen bir boyacinin kisisel asistanisin. Boyaci sana emir verir, sen anlarsin.\nGorevin SADECE mesaji siniflandirmak ve icindeki bilgileri cikarmak.\nHesap yapma, yorum yapma, tahmin etme.\n\nKullanici mesaji: {{ $json.message.text }}\n\nintent degerleri ve ornekleri:\n- \"fiyat_sorgusu\"  -> \"120 m2 tavan dahil kac para\", \"3+1 ev fiyat\"\n- \"stok_sorgusu\"   -> \"depoda ne var\", \"firca var mi\", \"ne almam lazim\"\n- \"is_kaydi\"       -> \"15 nisana is aldim\", \"Ahmet Bey'e is aldim 120 m2\"\n- \"is_bitti\"       -> \"Ahmet'in isi bitti\", \"bugunku is tamam\"\n- \"is_iptal\"       -> \"Ahmet'in isini iptal et\", \"yarinki is iptal\"\n- \"malzeme_alim\"  -> \"20 litre ic cephe boyasi aldim\", \"5 kg macun aldim\", \"2 firca aldim\"\n- \"fiyat_guncelle\" -> \"o fiyati 30 bine cek\", \"35 bin yap\"\n- \"diger\"          -> yukaridakilerin hicbiri\n\nCikarilacak alanlar:\n- yeni_tutar: sayi. Sadece \"o fiyati X yap/cek\" gibi guncelleme mesajlarinda\n  yeni fiyati cikar (orn \"30 bine cek\" -> 30000, \"35 bin yap\" -> 35000). Yoksa null.\n- alinan_malzeme: \"ic_cephe_boyasi\" | \"tavan_boyasi\" | \"macun\" | \"bant_ortu_seti\" | null\n  (bunlardan hangisine benziyorsa onu sec; \"beyaz boya\", \"ic cephe\" -> ic_cephe_boyasi;\n   \"tavan\" -> tavan_boyasi; \"firca\", \"rulo\", \"ortu\" -> bant_ortu_seti)\n- alinan_miktar: sayi (kac litre/kg/adet alindi), yoksa null\n- intent: yukaridaki degerlerden biri\n- metrekare: sayi, yoksa null\n- oda_tipi: metin (orn \"3+1\"), yoksa null\n- tavan_dahil: true | false | null (belirtilmemisse null)\n- musteri_adi: metin (orn \"Ahmet Bey\"), yoksa null\n- - is_tarihi: YYYY-MM-DD formatinda. Bugunun tarihi: {{ $now.format('yyyy-MM-dd') }}\n  \"yarin\", \"15 nisan\", \"onumuzdeki sali\" gibi ifadeleri bu tarihe gore hesapla.\n  KURAL: Boyaci HER ZAMAN gelecekteki bir tarihi kasteder. Hesapladigin tarih\n  bugunden onceyse, bir sonraki yila al. Ornek: bugun 2026-07-18 ise\n  \"15 nisan\" -> 2027-04-15 (2026-04-15 DEGIL, o gecmiste kaldi).\n  Tarih yoksa null.\nMesajda olmayan bilgiyi UYDURMA, null birak.\n\n",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        208,
+        0
+      ],
+      "id": "bfb715b8-3027-4ef2-b69b-263edda6a081",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        176,
+        208
+      ],
+      "id": "95e2e3ec-725e-464f-932d-7a137736cbcd",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3eTFpODcfm7DsgdK",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"intent\": {\n      \"type\": \"string\",\n      \"enum\": [\"fiyat_sorgusu\", \"stok_sorgusu\", \"is_kaydi\", \"is_bitti\", \"is_iptal\", \"malzeme_alim\", \"fiyat_guncelle\", \"diger\"]\n    },\n    \"yeni_tutar\": { \"type\": [\"number\", \"null\"] },\n    \"metrekare\": { \"type\": [\"number\", \"null\"] },\n    \"oda_tipi\": { \"type\": [\"string\", \"null\"] },\n    \"tavan_dahil\": { \"type\": [\"boolean\", \"null\"] },\n    \"musteri_adi\": { \"type\": [\"string\", \"null\"] },\n    \"is_tarihi\": { \"type\": [\"string\", \"null\"] },\n    \"tutar\": { \"type\": [\"number\", \"null\"] },\n    \"alinan_malzeme\": { \"type\": [\"string\", \"null\"] },\n    \"alinan_miktar\": { \"type\": [\"number\", \"null\"] }\n  },\n  \"required\": [\"intent\", \"yeni_tutar\", \"metrekare\", \"oda_tipi\", \"tavan_dahil\", \"musteri_adi\", \"is_tarihi\", \"tutar\", \"alinan_malzeme\", \"alinan_miktar\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        352,
+        208
+      ],
+      "id": "905d60cf-92f0-4fff-a7d1-9a199c839972",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "fiyat_sorgusu",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "e83206fc-6db2-4257-9dfd-dd76ef76ae9c"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "fiyat"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b401d552-9ef4-4b85-a760-1fa1352370f2",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "stok_sorgusu",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "stok"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "977a7e61-85b4-439d-b2a1-c68dc60155e7",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "is_kaydi",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "is_kaydi"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "baa8159a-e7b3-41f6-b846-6d9c09b77960",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "is_bitti",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "is_bitti"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "7a121854-5b17-46b0-8add-8c13d7369dff",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "is_iptal",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "is_iptal"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "288c15e5-84d5-4050-ba22-a69c0e55d8bc",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "fiyat_guncelle",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "fiyat_guncelle"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "b47ec379-5e52-4af3-aa72-a28235682b74",
+                    "leftValue": "={{ $json.output.intent }}",
+                    "rightValue": "malzeme_alim",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "malzeme_alim"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        512,
+        -80
+      ],
+      "id": "d681af0b-bc5f-49ec-9f15-3816f4765fb4",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  s.malzeme,\n  s.birim,\n  s.miktar AS depoda,\n  COALESCE(r.ayrilmis, 0) AS ayrilmis,\n  s.miktar - COALESCE(r.ayrilmis, 0) AS serbest,\n  s.kritik_seviye,\n  r.ilk_tarih\nFROM stok s\nLEFT JOIN (\n  SELECT h.malzeme,\n         SUM(h.miktar) AS ayrilmis,\n         TO_CHAR(MIN(i.is_tarihi), 'DD.MM.YYYY') AS ilk_tarih\n  FROM stok_hareketleri h\n  JOIN isler i ON i.id = h.is_id\n  WHERE h.yon = 'rezerv' AND i.statu = 'onaylandi'\n  GROUP BY h.malzeme\n) r ON r.malzeme = s.malzeme\nORDER BY s.malzeme;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        800,
+        -672
+      ],
+      "id": "fcbcaa11-fccf-46bb-94d7-afb87f431929",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "postgres": {
+          "id": "BE0dOmnOY7gUVESa",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const chatId = $('Telegram Trigger').first().json.message.chat.id;\nconst satirlar = [];\n\nfor (const item of $input.all()) {\n  const s = item.json;\n  const depoda   = Number(s.depoda);\n  const ayrilmis = Number(s.ayrilmis);\n  const serbest  = Number(s.serbest);\n  const kritik   = Number(s.kritik_seviye);\n\n  // ic_cephe_boya_beyaz --> ic cephe boya beyaz\n  const ad = s.malzeme.replace(/_/g, ' ');\n\n  let satir = `${ad}: ${depoda} ${s.birim}`;\n\n  if (ayrilmis > 0) {\n    satir += ` (${ayrilmis} ayrilmis, serbest ${serbest})`;\n  }\n\n  if (serbest < 0) {\n    satir += `\\n   EKSIK ${Math.abs(serbest)} ${s.birim}`;\n    if (s.ilk_tarih) satir += ` — ${s.ilk_tarih} isine kadar al`;\n  } else if (serbest <= kritik) {\n    satir += `\\n   AZ KALDI`;\n  }\n\n  satirlar.push(satir);\n}\n\nreturn [{\n  json: {\n    chatId: chatId,\n    mesaj: 'DEPO DURUMU\\n\\n' + satirlar.join('\\n')\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -672
+      ],
+      "id": "95a33dd7-7ebb-4ca0-9447-b32cc3156704",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.mesaj }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        -672
+      ],
+      "id": "1730850f-eb86-4c1b-bd19-4923e2b74bd8",
+      "name": "Stok Gonder",
+      "webhookId": "000ba94a-cd49-4714-a8ec-3dd1ce9f5a8f",
+      "executeOnce": false,
+      "credentials": {
+        "telegramApi": {
+          "id": "8re9eOadaglPzjQJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT kalem, deger FROM fiyat_tarifesi;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        800,
+        -528
+      ],
+      "id": "44f78371-c905-4cf7-bef5-f98141c5c80e",
+      "name": "Is tarife",
+      "credentials": {
+        "postgres": {
+          "id": "BE0dOmnOY7gUVESa",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Tarifeyi sözlüğe çevir\nconst t = {};\nfor (const item of $input.all()) {\n  t[item.json.kalem] = Number(item.json.deger);\n}\n\n// Gemini'nin çıkardıkları\nconst p = $('Basic LLM Chain').first().json.output;\n// GUVENLIK KONTROLU: Gemini gecmis tarih verdiyse duzelt.\n// Boyaci gecmise is alamaz. Prompt'a yazdik ama garanti degil.\nif (p.is_tarihi) {\n  const bugun = new Date().toISOString().slice(0, 10);\n  if (p.is_tarihi < bugun) {\n    const parcalar = p.is_tarihi.split('-');\n    parcalar[0] = String(Number(parcalar[0]) + 1);  // yili 1 artir\n    p.is_tarihi = parcalar.join('-');\n  }\n}\nconst chatId = $('Telegram Trigger').first().json.message.chat.id;\n\n// Duvar alanı\nconst duvarAlani = p.metrekare * t.duvar_alan_carpani;\n\n// Kaç litre iç cephe boyası: duvar alani x kat / kapsama\nconst boyaLitre = Math.ceil(duvarAlani * t.kat_sayisi / t.boya_kapsama);\n\n// Tavan dahilse tavan boyası da lazım (tavan alani = zemin alani)\nconst tavanLitre = p.tavan_dahil\n  ? Math.ceil(p.metrekare * t.kat_sayisi / t.boya_kapsama)\n  : 0;\n\nreturn [{\n  json: {\n    chatId: chatId,\n    musteri_adi: p.musteri_adi,\n    is_tarihi: p.is_tarihi,\n    metrekare: p.metrekare,\n    tavan_dahil: p.tavan_dahil,\n    tutar: p.tutar,\n    duvarAlani: Math.round(duvarAlani),\n    boyaLitre: boyaLitre,\n    tavanLitre: tavanLitre\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -528
+      ],
+      "id": "9f8787c1-fc1a-48dc-a1f1-0c6ec99cae6c",
+      "name": "Is Hesap"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH yeni_is AS (\n  INSERT INTO isler (musteri_adi, is_tarihi, metrekare, tavan_dahil, tutar, statu)\n  VALUES ($1, $2::date, $3, $4, $5, 'onaylandi')\n  RETURNING id\n)\nINSERT INTO stok_hareketleri (is_id, malzeme, miktar, yon)\nSELECT y.id, r.malzeme, r.miktar, 'rezerv'\nFROM yeni_is y\nCROSS JOIN (VALUES\n  ('ic_cephe_boyasi', $6::numeric),\n  ('tavan_boyasi',    $7::numeric)\n) AS r(malzeme, miktar)\nWHERE r.miktar > 0\nRETURNING is_id;",
+        "options": {
+          "queryReplacement": "={{ $json.musteri_adi }}, {{ $json.is_tarihi }}, {{ $json.metrekare }}, {{ $json.tavan_dahil }}, {{ $json.tutar }}, {{ $json.boyaLitre }}, {{ $json.tavanLitre }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1200,
+        -528
+      ],
+      "id": "5a3dd1b6-de20-4f9b-be88-80a18c9a0cc9",
+      "name": "is kaydet",
+      "credentials": {
+        "postgres": {
+          "id": "BE0dOmnOY7gUVESa",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  s.malzeme,\n  s.birim,\n  s.miktar AS depoda,\n  COALESCE(r.ayrilmis, 0) AS ayrilmis,\n  s.miktar - COALESCE(r.ayrilmis, 0) AS serbest\nFROM stok s\nLEFT JOIN (\n  SELECT h.malzeme, SUM(h.miktar) AS ayrilmis\n  FROM stok_hareketleri h\n  JOIN isler i ON i.id = h.is_id\n  WHERE h.yon = 'rezerv' AND i.statu = 'onaylandi'\n  GROUP BY h.malzeme\n) r ON r.malzeme = s.malzeme\nWHERE s.malzeme IN (\n  SELECT malzeme FROM stok_hareketleri WHERE is_id = $1 AND yon = 'rezerv'\n);",
+        "options": {
+          "queryReplacement": "={{ $json.is_id }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1408,
+        -528
+      ],
+      "id": "74f16295-1d13-4cbf-8f0d-c3ee0bb04798",
+      "name": "is stok kontrol",
+      "executeOnce": true,
+      "credentials": {
+        "postgres": {
+          "id": "BE0dOmnOY7gUVESa",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const h = $('Is Hesap').first().json;\n\n// 2027-04-15 --> 15.04.2027\nconst [y, m, g] = h.is_tarihi.split('-');\nconst tarih = `${g}.${m}.${y}`;\n\nlet mesaj = 'IS KAYDEDILDI\\n\\n';\nmesaj += `Musteri: ${h.musteri_adi}\\n`;\nmesaj += `Tarih: ${tarih}\\n`;\nmesaj += `Ev: ${h.metrekare} m2 (tavan ${h.tavan_dahil ? 'dahil' : 'haric'})\\n`;\nmesaj += `Tutar: ${h.tutar} TL\\n\\n`;\nmesaj += 'AYRILAN MALZEME\\n';\n\nconst eksikler = [];\n\nfor (const item of $input.all()) {\n  const s = item.json;\n  const ad = s.malzeme.replace(/_/g, ' ');\n  const serbest = Number(s.serbest);\n\n  mesaj += `${ad}: depoda ${Number(s.depoda)} ${s.birim}, toplam ayrilmis ${Number(s.ayrilmis)}\\n`;\n\n  if (serbest < 0) {\n    eksikler.push(`${ad}: ${Math.abs(serbest)} ${s.birim}`);\n  }\n}\n\nif (eksikler.length > 0) {\n  mesaj += `\\nALINACAK (${tarih} isine kadar)\\n`;\n  for (const e of eksikler) {\n    mesaj += `- ${e}\\n`;\n  }\n} else {\n  mesaj += '\\nStok yeterli, alacak bir sey yok.\\n';\n}\n\nreturn [{ json: { chatId: h.chatId, mesaj: mesaj } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1616,
+        -528
+      ],
+      "id": "c938937a-611f-4f75-9e07-b82a95bcc40f",
+      "name": "is mesaj"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.mesaj }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1824,
+        -528
+      ],
+      "id": "cb859811-16e2-4685-9348-8566835aba6e",
+      "name": "is send text",
+      "webhookId": "d8b00b3c-2d43-4456-a339-f0dd15458609",
+      "credentials": {
+        "telegramApi": {
+          "id": "8re9eOadaglPzjQJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH hedef AS (\n  SELECT id FROM isler\n  WHERE musteri_adi ILIKE '%' || $1 || '%' AND statu = 'onaylandi'\n  ORDER BY id DESC\n  LIMIT 1\n),\nguncelle AS (\n  UPDATE isler SET statu = 'tamamlandi'\n  WHERE id = (SELECT id FROM hedef)\n  RETURNING id\n),\ndusum AS (\n  UPDATE stok s\n  SET miktar = s.miktar - h.miktar\n  FROM stok_hareketleri h\n  WHERE h.is_id = (SELECT id FROM hedef)\n    AND h.yon = 'rezerv'\n    AND s.malzeme = h.malzeme\n)\nSELECT id FROM guncelle;",
+        "options": {
+          "queryReplacement": "={{ $('Basic LLM Chain').first().json.output.musteri_adi }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        784,
+        -384
+      ],
+      "id": "1c821481-2028-4122-95f9-af136af1e89f",
+      "name": "is bitir",
+      "credentials": {
+        "postgres": {
+          "id": "BE0dOmnOY7gUVESa",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const chatId = $('Telegram Trigger').first().json.message.chat.id;\nconst musteri = $('Basic LLM Chain').first().json.output.musteri_adi;\n\n// Is Bitir bir satir dondurduyse is bulundu, bos donduyse bulunamadi\nconst bulundu = $input.all().length > 0;\n\nlet mesaj;\nif (bulundu) {\n  mesaj = `IS TAMAMLANDI\\n\\n${musteri} isi bitti olarak isaretlendi.\\n`;\n  mesaj += `Ayrilan boya depodan dusuldu.`;\n} else {\n  mesaj = `${musteri} adina aktif bir is bulunamadi.\\n`;\n  mesaj += `(Belki zaten tamamlandi veya iptal edildi?)`;\n}\n\nreturn [{ json: { chatId: chatId, mesaj: mesaj } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -384
+      ],
+      "id": "59ab7d16-8ef3-48bb-8b4f-aed76a4002a3",
+      "name": "is bitir mesaj"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.mesaj }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        -384
+      ],
+      "id": "7a450cba-6273-4332-9d55-2b39a0117fbb",
+      "name": "is bitir gonder",
+      "webhookId": "245c34fe-5bd9-4eae-aeae-a2513bcf4958",
+      "credentials": {
+        "telegramApi": {
+          "id": "8re9eOadaglPzjQJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "WITH hedef AS (\n  SELECT id FROM isler\n  WHERE musteri_adi ILIKE '%' || $1 || '%' AND statu = 'onaylandi'\n  ORDER BY id DESC\n  LIMIT 1\n)\nUPDATE isler SET statu = 'iptal'\nWHERE id = (SELECT id FROM hedef)\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ $('Basic LLM Chain').first().json.output.musteri_adi }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        784,
+        -224
+      ],
+      "id": "cee3f2f8-fd90-490f-bf8a-9259048aae78",
+      "name": "is iptal",
+      "credentials": {
+        "postgres": {
+          "id": "BE0dOmnOY7gUVESa",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const chatId = $('Telegram Trigger').first().json.message.chat.id;\nconst musteri = $('Basic LLM Chain').first().json.output.musteri_adi;\n\nconst bulundu = $input.all().length > 0;\n\nlet mesaj;\nif (bulundu) {\n  mesaj = `IS IPTAL EDILDI\\n\\n${musteri} isi iptal edildi.\\n`;\n  mesaj += `Ayrilan malzeme serbest birakildi, depo degismedi.`;\n} else {\n  mesaj = `${musteri} adina aktif bir is bulunamadi.\\n`;\n  mesaj += `(Belki zaten tamamlandi veya iptal edildi?)`;\n}\n\nreturn [{ json: { chatId: chatId, mesaj: mesaj } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -224
+      ],
+      "id": "cbdcef3c-b6bd-4cbd-9d5a-671596e76e1c",
+      "name": "is iptal mesaj"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.mesaj }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        -224
+      ],
+      "id": "540ee2c1-2530-4fe1-85ba-f1058559c1cd",
+      "name": "is iptal gonder",
+      "webhookId": "d0154e7a-16bf-4e5a-8bfe-c5ddacd1ede6",
+      "credentials": {
+        "telegramApi": {
+          "id": "8re9eOadaglPzjQJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE stok\nSET miktar = miktar + $1::numeric\nWHERE malzeme = $2\nRETURNING malzeme, miktar;",
+        "options": {
+          "queryReplacement": "={{ $('Basic LLM Chain').first().json.output.alinan_miktar }}, {{ $('Basic LLM Chain').first().json.output.alinan_malzeme }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        768,
+        64
+      ],
+      "id": "feb9cef0-0c3a-4f13-8916-ecc0bd14e312",
+      "name": "malzeme ekle",
+      "credentials": {
+        "postgres": {
+          "id": "BE0dOmnOY7gUVESa",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const chatId = $('Telegram Trigger').first().json.message.chat.id;\nconst bulundu = $input.all().length > 0;\n\nlet mesaj;\nif (bulundu) {\n  const s = $input.first().json;\n  const ad = s.malzeme.replace(/_/g, ' ');\n  mesaj = `MALZEME EKLENDI\\n\\n${ad}: artik ${Number(s.miktar)} birim depoda.`;\n} else {\n  mesaj = `Malzeme taninamadi. Lutfen daha acik yaz.\\n`;\n  mesaj += `(ornek: \"20 litre ic cephe boyasi aldim\")`;\n}\n\nreturn [{ json: { chatId: chatId, mesaj: mesaj } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        64
+      ],
+      "id": "c2956112-e7f5-47d5-8d2d-307ca28c14b5",
+      "name": "malzeme mesaj"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.mesaj }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        64
+      ],
+      "id": "e79ce978-3b4e-4aad-901e-49b44e39b396",
+      "name": "Send a text message1",
+      "webhookId": "0a9a5050-0133-4a49-ae5d-a68870edaf2b",
+      "credentials": {
+        "telegramApi": {
+          "id": "8re9eOadaglPzjQJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ec56e82c-c09f-4c65-9cb2-fdf01665a25b",
+              "leftValue": "={{ $json.message.photo }}",
+              "rightValue": "",
+              "operator": {
+                "type": "array",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "acf2ae26-9a1f-4e57-b3b2-71b6d3d59511",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.photo.last().file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        48,
+        384
+      ],
+      "id": "e5f57bd2-b6ed-45e3-b693-cf2f375a2a21",
+      "name": "fis indir",
+      "webhookId": "2ea519f9-5180-4d31-b977-401fa2ce43f0",
+      "credentials": {
+        "telegramApi": {
+          "id": "8re9eOadaglPzjQJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "text": "Bu bir market/hirdavat fisi. Icindeki malzemeleri oku.\n\nSADECE su depo kategorilerine uyanlari cikar, digerlerini TAMAMEN atla:\n- \"ic_cephe_boyasi\"  (ic cephe boyasi, plastik boya, beyaz boya vb.)\n- \"tavan_boyasi\"     (tavan boyasi)\n- \"macun\"            (macun, alci)\n- \"bant_ortu_seti\"   (firca, rulo, ortu, bant, maskeleme)\n\nYukaridakilere UYMAYAN her sey (tornavida, cakmak, su, yemek vb.) ATLA,\nlisteye ekleme.\n\nHer kalem icin miktar cikar. Fiste litre/kg/adet olarak yazar.\nMiktari okuyamiyorsan o kalemi atla (UYDURMA).\n\nCiktiyi JSON dizisi olarak ver:\n[{\"malzeme\": \"ic_cephe_boyasi\", \"miktar\": 15}, {\"malzeme\": \"macun\", \"miktar\": 5}]\n\nHicbir uygun kalem yoksa bos dizi ver: []",
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        240,
+        384
+      ],
+      "id": "68b449c1-aacf-4de4-bbc1-33347ad43fad",
+      "name": "fis oku",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "3eTFpODcfm7DsgdK",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE stok\nSET miktar = miktar + $1::numeric\nWHERE malzeme = $2\nRETURNING malzeme, miktar;",
+        "options": {
+          "queryReplacement": "={{ $json.miktar }}, {{ $json.malzeme }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        608,
+        384
+      ],
+      "id": "974153e0-0864-406b-80f1-63222815fb41",
+      "name": "fis ekle",
+      "credentials": {
+        "postgres": {
+          "id": "BE0dOmnOY7gUVESa",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const chatId = $('Fis Parse').first().json.chatId;\n\n// Fis bos muydu? (hic taninan kalem yoksa)\nconst parseSonuc = $('Fis Parse').all();\nif (parseSonuc.length === 1 && parseSonuc[0].json.bos === true) {\n  return [{ json: {\n    chatId: chatId,\n    mesaj: 'Fiste depoya uygun malzeme bulunamadi.'\n  }}];\n}\n\n// Eklenen her malzemenin guncel halini topla\nlet mesaj = 'FISTEN EKLENDI\\n\\n';\nfor (const item of $input.all()) {\n  const s = item.json;\n  const ad = s.malzeme.replace(/_/g, ' ');\n  mesaj += `${ad}: artik ${Number(s.miktar)} birim depoda\\n`;\n}\n\nreturn [{ json: { chatId: chatId, mesaj: mesaj } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        384
+      ],
+      "id": "b78494e1-6024-462d-bad0-08e3e21d5cef",
+      "name": "fis mesaj"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.mesaj }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        384
+      ],
+      "id": "d29ce9e3-611e-47b7-a163-b8c1a23253fa",
+      "name": "fis gonder",
+      "webhookId": "b84e236b-50ae-4078-b1ec-8b0bb1781dd8",
+      "credentials": {
+        "telegramApi": {
+          "id": "8re9eOadaglPzjQJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gemini'nin ham cevabini al\nlet ham = $json.content?.parts?.[0]?.text\n       ?? $json.text\n       ?? $json.content\n       ?? '';\n\n// ```json ve ``` isaretlerini temizle\nham = ham.replace(/```json/g, '').replace(/```/g, '').trim();\n\n// Metni gercek JSON'a cevir\nlet kalemler;\ntry {\n  kalemler = JSON.parse(ham);\n} catch (e) {\n  kalemler = [];\n}\n\nconst chatId = $('Telegram Trigger').first().json.message.chat.id;\n\n// Hic kalem yoksa\nif (!Array.isArray(kalemler) || kalemler.length === 0) {\n  return [{\n    json: {\n      chatId: chatId,\n      bos: true,\n      kalemler: []\n    }\n  }];\n}\n\n// Her kalemi ayri satir yap (depoya tek tek eklemek icin)\nreturn kalemler.map(k => ({\n  json: {\n    chatId: chatId,\n    malzeme: k.malzeme,\n    miktar: Number(k.miktar),\n    bos: false\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        384
+      ],
+      "id": "bcec7085-e7d8-440f-b658-484f17ee8c33",
+      "name": "Fis Parse"
+    },
+    {
+      "parameters": {
+        "jsCode": "const chatId = $('Telegram Trigger').first().json.message.chat.id;\n\nconst mesaj = `Anlayamadim usta. Sunlari yapabilirim:\n\n- Fiyat sor: \"120 m2 tavan dahil kac para\"\n- Depoyu gor: \"depoda ne var\"\n- Is kaydet: \"Ahmet Bey'e 15 nisana is aldim, 120 m2, tavan dahil, 36500\"\n- Is bitir: \"Ahmet'in isi bitti\"\n- Is iptal: \"Ahmet'in isini iptal et\"\n- Malzeme ekle: \"20 litre ic cephe boyasi aldim\" (veya fis fotografi at)`;\n\nreturn [{ json: { chatId: chatId, mesaj: mesaj } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        224
+      ],
+      "id": "0f035e86-1ff0-4153-a3ae-94b65f7a4ea5",
+      "name": "Diger mesaj"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.mesaj }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        224
+      ],
+      "id": "55e4e520-5f2d-4e1a-998b-a0a07d3052b7",
+      "name": "diger gonder",
+      "webhookId": "9d3e8dba-1d0f-49b6-8deb-993f19bcb535",
+      "credentials": {
+        "telegramApi": {
+          "id": "8re9eOadaglPzjQJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT kalem, deger FROM fiyat_tarifesi;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        800,
+        -832
+      ],
+      "id": "6f9e52e4-5cc7-47b2-b3d6-20fab106929c",
+      "name": "Fiyat Tarife",
+      "credentials": {
+        "postgres": {
+          "id": "BE0dOmnOY7gUVESa",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fiyat listesini kolay okunur hale getir\nconst t = {};\nfor (const item of $input.all()) {\n  t[item.json.kalem] = Number(item.json.deger);\n}\n\n// Gemini'nin çıkardığı bilgileri al\nconst p = $('Basic LLM Chain').first().json.output;\n\n// Duvar alanı: boyacı \"120 m2 ev\" der ama boyanan zemin değil, duvarlar\nconst duvarAlani = p.metrekare * t.duvar_alan_carpani;\n\n// Duvar parası\nlet tutar = duvarAlani * t.duvar_m2;\n\n// Tavan istiyorsa ekle\nif (p.tavan_dahil) {\n  tutar += p.metrekare * t.tavan_m2;\n}\n\n// Çok küçük işlerde minimum tutar uygula\ntutar = Math.max(tutar, t.min_is_tutari);\n\n// 100 TL'ye yuvarla (boyacı \"27.834 TL\" demez)\ntutar = Math.round(tutar / 100) * 100;\n\n// Kaç litre boya lazım\nconst litre = Math.ceil(duvarAlani * t.kat_sayisi / t.boya_kapsama);\n\nreturn [{\n  json: {\n    chatId: $('Telegram Trigger').first().json.message.chat.id,\n    metrekare: p.metrekare,\n    oda_tipi: p.oda_tipi,\n    tavan_dahil: p.tavan_dahil,\n    duvarAlani: Math.round(duvarAlani),\n    litre: litre,\n    tutar: tutar\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        -832
+      ],
+      "id": "ac126873-baf6-4121-a55a-103fcf080159",
+      "name": "Fiyat Hesap"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=Fiyat teklifi\n\nEv: {{ $('Fiyat Hesap').item.json.metrekare }} m2 {{ $('Fiyat Hesap').item.json.oda_tipi }}\nBoyanacak duvar alani: ~{{ $('Fiyat Hesap').item.json.duvarAlani }} m2\nTavan: {{ $('Fiyat Hesap').item.json.tavan_dahil ? 'dahil' : 'haric' }}\n\nGerekli boya: ~{{ $('Fiyat Hesap').item.json.litre }} litre\n\nTOPLAM: {{ $('Fiyat Hesap').item.json.tutar }} TL",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1392,
+        -832
+      ],
+      "id": "03620117-99fc-4b9a-9406-63d2ebc761b4",
+      "name": "Fiyat Gonder",
+      "webhookId": "d37764f9-9326-4aac-b7b8-7f118a6027de",
+      "credentials": {
+        "telegramApi": {
+          "id": "8re9eOadaglPzjQJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO pending_conversations (chat_id, intent, toplanan_veri, eksik_alanlar)\nVALUES ($1, 'fiyat_verildi', $2::jsonb, '{}')\nON CONFLICT (chat_id)\nDO UPDATE SET\n  intent = 'fiyat_verildi',\n  toplanan_veri = $2::jsonb,\n  updated_at = now();",
+        "options": {
+          "queryReplacement": "={{ $json.chatId }}, {{ JSON.stringify({ son_teklif: $json.tutar, metrekare: $json.metrekare, tavan_dahil: $json.tavan_dahil }) }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1200,
+        -832
+      ],
+      "id": "094d8e8a-9a92-464a-b799-06c94aec8023",
+      "name": "Teklif Kaydet",
+      "credentials": {
+        "postgres": {
+          "id": "BE0dOmnOY7gUVESa",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE pending_conversations\nSET toplanan_veri = jsonb_set(toplanan_veri, '{son_teklif}', to_jsonb($2::numeric)),\n    updated_at = now()\nWHERE chat_id = $1 AND intent = 'fiyat_verildi'\nRETURNING toplanan_veri->>'son_teklif' AS yeni, toplanan_veri->>'metrekare' AS metrekare;",
+        "options": {
+          "queryReplacement": "={{ $('Telegram Trigger').item.json.message.chat.id }}, {{ $('Basic LLM Chain').item.json.output.yeni_tutar }}"
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        784,
+        -96
+      ],
+      "id": "ca1ce228-ec18-482f-be86-62e0f5ef216f",
+      "name": "Fiyat Guncelle",
+      "credentials": {
+        "postgres": {
+          "id": "BE0dOmnOY7gUVESa",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const chatId = $('Telegram Trigger').first().json.message.chat.id;\nconst bulundu = $input.all().length > 0;\n\nlet mesaj;\nif (bulundu) {\n  const yeni = $input.first().json.yeni;\n  mesaj = `FIYAT GUNCELLENDI\\n\\nYeni teklif: ${yeni} TL`;\n} else {\n  mesaj = `Once bir fiyat sormalisin usta.\\n`;\n  mesaj += `Ornek: \"120 m2 tavan dahil kac para\"`;\n}\n\nreturn [{ json: { chatId: chatId, mesaj: mesaj } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -96
+      ],
+      "id": "fd268fa6-1bbb-4d94-8d06-f26f5cab89f2",
+      "name": "Fiyat Guncelle Mesaj"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.mesaj }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        -96
+      ],
+      "id": "24abf087-c9d6-4098-aeaa-463c7c6cfb47",
+      "name": "Fiyat Guncelle Gonder",
+      "webhookId": "60f65108-f339-42ec-ac15-d2f70ab530bf",
+      "credentials": {
+        "telegramApi": {
+          "id": "8re9eOadaglPzjQJ",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Fiyat Tarife",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute a SQL query1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is tarife",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "is bitir",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "is iptal",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fiyat Guncelle",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "malzeme ekle",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Diger mesaj",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Stok Gonder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is tarife": {
+      "main": [
+        [
+          {
+            "node": "Is Hesap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Hesap": {
+      "main": [
+        [
+          {
+            "node": "is kaydet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is kaydet": {
+      "main": [
+        [
+          {
+            "node": "is stok kontrol",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is stok kontrol": {
+      "main": [
+        [
+          {
+            "node": "is mesaj",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is mesaj": {
+      "main": [
+        [
+          {
+            "node": "is send text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is bitir": {
+      "main": [
+        [
+          {
+            "node": "is bitir mesaj",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is bitir mesaj": {
+      "main": [
+        [
+          {
+            "node": "is bitir gonder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is iptal": {
+      "main": [
+        [
+          {
+            "node": "is iptal mesaj",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "is iptal mesaj": {
+      "main": [
+        [
+          {
+            "node": "is iptal gonder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "malzeme ekle": {
+      "main": [
+        [
+          {
+            "node": "malzeme mesaj",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "malzeme mesaj": {
+      "main": [
+        [
+          {
+            "node": "Send a text message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "fis indir",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fis indir": {
+      "main": [
+        [
+          {
+            "node": "fis oku",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fis oku": {
+      "main": [
+        [
+          {
+            "node": "Fis Parse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fis ekle": {
+      "main": [
+        [
+          {
+            "node": "fis mesaj",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fis mesaj": {
+      "main": [
+        [
+          {
+            "node": "fis gonder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fis Parse": {
+      "main": [
+        [
+          {
+            "node": "fis ekle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Diger mesaj": {
+      "main": [
+        [
+          {
+            "node": "diger gonder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fiyat Tarife": {
+      "main": [
+        [
+          {
+            "node": "Fiyat Hesap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fiyat Hesap": {
+      "main": [
+        [
+          {
+            "node": "Teklif Kaydet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Teklif Kaydet": {
+      "main": [
+        [
+          {
+            "node": "Fiyat Gonder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fiyat Guncelle": {
+      "main": [
+        [
+          {
+            "node": "Fiyat Guncelle Mesaj",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fiyat Guncelle Mesaj": {
+      "main": [
+        [
+          {
+            "node": "Fiyat Guncelle Gonder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "77783ac8-c5c2-4fc6-a9cd-cb4273d63c94",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a906273dc646935f0405943ba6eebaae1b598aef726d6622cff94867902c7b8f"
+  },
+  "id": "hslVlSvYaRc9E8kt",
+  "tags": []
+}
